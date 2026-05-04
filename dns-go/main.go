@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	queries := []string{
+	sampleQueries := []string{
 		"2001:49f0:d0b8:1::/56",
 		"2402:8100:2582:1::/56",
 		"240e:438:1e30:f::/48",
@@ -32,10 +32,13 @@ func main() {
 		"ffff::/16",
 	}
 
-	for _, query := range queries {
-		_, ecs, _ := net.ParseCIDR(query)
+	for _, query := range sampleQueries {
+		_, ecs, err := net.ParseCIDR(query)
+		if err != nil {
+			log.Fatal(err)
+		}
 		pop, scope := data.Route(ecs)
-		fmt.Printf("ECS: %s → PoP %d, scope /%d\n", ecs, pop, scope)
+		fmt.Printf("ECS: %s -> PoP %d, scope /%d\n", ecs, pop, scope)
 	}
 
 }
