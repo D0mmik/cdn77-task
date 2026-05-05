@@ -27,6 +27,7 @@ static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static void ngx_http_upstream_set_cache_key_header(ngx_http_request_t *r);
 #endif
 
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
@@ -851,6 +852,36 @@ found:
 
 #if (NGX_HTTP_CACHE)
 
+static void
+ngx_http_upstream_set_cache_key_header(ngx_http_request_t *r)
+{
+    ngx_table_elt_t *h;
+    u_char *p;
+
+    if (r->cache == NULL) {
+        return;
+    }
+
+    p = ngx_pnalloc(r->pool, NGX_HTTP_CACHE_KEY_LEN * 2);
+    if (p == NULL) {
+        return;
+    }
+
+    ngx_hex_dump(p, r->cache->main, NGX_HTTP_CACHE_KEY_LEN);
+
+    h = ngx_list_push(&r->headers_out.headers);
+    if (h == NULL) {
+        return;
+    }
+
+    h->hash = 1;
+    ngx_str_set(&h->key, "X-Cache-Key");
+    h->value.data = p;
+    h->value.len = NGX_HTTP_CACHE_KEY_LEN * 2;
+    h->lowcase_key = (u_char *) "x-cache-key";
+    h->next = NULL;
+}
+
 static ngx_int_t
 ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
@@ -887,6 +918,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
         /* TODO: add keys */
 
         ngx_http_file_cache_create_key(r);
+
+        ngx_http_upstream_set_cache_key_header(r);
 
         if (r->cache->header_start + 256 > u->conf->buffer_size) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
